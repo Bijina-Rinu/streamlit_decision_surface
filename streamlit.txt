@@ -1,0 +1,91 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from mlxtend.plotting import plot_decision_regions
+
+# Dataset paths
+paths = [r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\1.ushape.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\2.concerticcir1.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\3.concertriccir2.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\4.linearsep.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\5.outlier.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\6.overlap.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\7.xor.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\8.twospirals.csv", 
+         r"C:\Users\user\Downloads\Multiple CSV\Multiple CSV\9.random.csv"]
+
+# Dataset names
+names = ["ushape", "conenticirc1", "concenticirc2", "linearsep", "outlier", 
+         "overlap", "xor", "twospirals", "random"]
+
+# Sidebar options
+dataset = st.sidebar.radio("Choose your dataset", ("Select Dataset", *names))
+
+if dataset != "Select Dataset":
+    # Load dataset
+    data = pd.read_csv(paths[names.index(dataset)], header=None)
+    data[2] = data[2].astype("int")
+    fv = data.iloc[:, :2]
+    cv = data.iloc[:, -1]
+
+    # Scatter plot
+    st.title('Scatter plot of your chosen dataset')
+    plt.figure(figsize=(8, 6))
+    plt.scatter(fv.iloc[:, 0], fv.iloc[:, 1], c=cv, cmap='viridis')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.title('Scatter Plot')
+    st.pyplot(plt)
+
+    st.divider()
+
+    # KNN options
+    select_option = st.sidebar.selectbox(" K", ("single K", "Multiple K"))
+    if select_option == "single K":
+        k = st.sidebar.slider("Select K value", 1, 100)
+        if st.sidebar.button('Submit'):
+            knn = KNeighborsClassifier(n_neighbors=k)
+            knn.fit(fv, cv.values)
+            fig, ax = plt.subplots()
+            plot_decision_regions(X=fv.values, y=cv.values, clf=knn, ax=ax)
+            ax.set_xlabel('F1')
+            ax.set_ylabel('F2')
+            ax.set_title('Decision Regions')
+            st.pyplot(fig)
+
+    elif select_option == "Multiple K":
+        k_min = st.sidebar.number_input("Minimum k-value", 1, 99)
+        k_max = st.sidebar.number_input("Maximum k-value", 2, 100)
+        if st.sidebar.button('submit'):
+            train_errors = []
+            test_errors = []
+            for n in range(k_min, k_max, 6):
+                knn = KNeighborsClassifier(n_neighbors=n)
+                knn.fit(fv, cv.values)
+                X_train, X_test, y_train, y_test = train_test_split(fv, cv, test_size=0.2, random_state=42)
+                train_errors.append(1 - knn.score(X_train, y_train))
+                test_errors.append(1 - knn.score(X_test, y_test))
+            
+            # Plotting decision regions
+            fig, ax = plt.subplots()
+            knn = KNeighborsClassifier(n_neighbors=k_min)
+            knn.fit(fv, cv.values)
+            plot_decision_regions(X=fv.values, y=cv.values, clf=knn, ax=ax)
+            ax.set_xlabel('F1')
+            ax.set_ylabel('F2')
+            ax.set_title('Decision Regions')
+            st.pyplot(fig)
+
+
+            # Plotting train error vs test error
+            plt.figure(figsize=(10, 6))
+            plt.plot(range(k_min, k_max, 6), train_errors, marker='o', label='Train Error')
+            plt.plot(range(k_min, k_max, 6), test_errors, marker='x', label='Test Error')
+            plt.xlabel('Number of Neighbors (K)')
+            plt.ylabel('Error Rate')
+            plt.title('Train Error vs Test Error')
+            plt.legend()
+            st.pyplot(plt)
